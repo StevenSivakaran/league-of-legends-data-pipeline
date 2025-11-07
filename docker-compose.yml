@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # Service 1 : PostgreSQL Database
+  postgres:
+    image: postgres:15                    # Image officielle Postgres v15
+    container_name: lol_postgres
+    environment:                          # Variables d'environnement
+      POSTGRES_USER: ${POSTGRES_USER}     # Lecture depuis .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_MULTIPLE-DATABASES: 'lol_data'  # Création de DB supplémentaires
+    ports:
+      - "5432:5432"                       # Port du Mac:Port du container
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Données persistantes
+      - ./sql/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql  # Init DB
+    healthcheck:                          # Vérifie que Postgres est prêt
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    restart: unless-stopped               # Redémarre automatiquement
+  
+  # Service 2 : Airflow Initialization (lance 1 fois)
+  airflow-init:
+    image: apache/airflow:2.8.0-python3.11
+    container_name: lol_airflow_init
+    depends_on:
+      - postgres                          # Attends que Postgres soit prêt
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'  # Pas les DAGs d'exemple
+      _AIRFLOW_DB_MIGRATE: 'true'         # Crée les tables Airflow
+      _AIRFLOW_WWW_USER_CREATE: 'true'    # Crée l'user admin
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    command: version                      # Commande d'init simple
+    restart: "no"                         # Ne redémarre PAS automatiquement
+  
+  # Service 3 : Airflow Webserver (Interface web)
+  airflow-webserver:
+    image: apache/airflow:2.8.0-python3.11
+    container_name: lol_airflow_webserver
+    depends_on:
+      - postgres
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      RIOT_API_KEY: ${RIOT_API_KEY}       # Pour que les DAGs y aient accès
+    ports:
+      - "8080:8080"                       # Interface web Airflow
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    command: webserver
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Service 4 : Airflow Scheduler (Exécute les DAGs)
+  airflow-scheduler:
+    image: apache/airflow:2.8.0-python3.11
+    container_name: lol_airflow_scheduler
+    depends_on:
+      - postgres
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
+      RIOT_API_KEY: ${RIOT_API_KEY}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    command: scheduler
+    restart: unless-stopped
+  
+# Définition des volumes nommés
+volumes:
+  postgres_data:                          # Docker gère le stockage
+    driver: local
