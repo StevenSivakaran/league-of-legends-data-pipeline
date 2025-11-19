@@ -1,0 +1,43 @@
+name: 'lol_analytics'
+version: '1.0.0'
+config-version: 2
+
+# Profil à utiliser
+profile: 'lol_analytics'
+
+# Dossiers
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+# Nettoyage
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+# Configuration des modèles
+models:
+  lol_analytics:
+    # Staging models : vues
+    staging:
+      +materialized: view
+      +schema: staging
+      
+    # Marts models : tables
+    marts:
+      +materialized: table
+      +schema: marts
+      
+    # Analytics models : tables
+    analytics:
+      +materialized: table
+      +schema: analytics
+
+# Variables
+vars:
+  start_date: '2024-01-01'
+  ranked_queue_ids: [420, 440]

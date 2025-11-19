@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: stg_matches
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - match_id
+    columns:
+      - name: match_id
+        tests:
+          - unique
+          - not_null
+      - name: duration_seconds
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 60      # 1 minute (pour les remakes)
+              max_value: 10800     # 3 heures (pour être safe)
+              
+  - name: stg_participants
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - match_id
+            - puuid
+    columns:
+      - name: kills
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: deaths
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: kda
+        tests:
+          - not_null

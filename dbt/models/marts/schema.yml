@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: dim_champions
+    description: "Dimension des champions avec leurs statistiques globales"
+    columns:
+      - name: champion_name
+        description: "Nom du champion (clé primaire)"
+        tests:
+          - unique
+          - not_null
+      - name: total_games
+        description: "Nombre total de parties jouées"
+      - name: total_wins
+        description: "Nombre total de victoires"
+      - name: win_rate
+        description: "Taux de victoire en pourcentage"
+        
+  - name: dim_summoners
+    description: "Dimension des invocateurs"
+    columns:
+      - name: puuid
+        description: "Identifiant unique du joueur"
+        tests:
+          - unique
+          - not_null
+          
+  - name: fact_matches
+    description: "Table de faits des matchs avec tous les participants"
+    columns:
+      - name: match_id
+        tests:
+          - not_null

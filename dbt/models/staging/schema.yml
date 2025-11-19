@@ -1,0 +1,40 @@
+version: 2
+
+# Déclaration des sources (données raw)
+sources:
+  - name: raw
+    description: "Données brutes de l'API Riot Games"
+    database: lol_data
+    schema: raw
+    tables:
+      - name: matches
+        description: "Métadonnées des matchs"
+        columns:
+          - name: match_id
+            description: "Identifiant unique du match"
+            tests:
+              - unique
+              - not_null
+          - name: game_creation
+            description: "Timestamp de création du match"
+            tests:
+              - not_null
+          - name: game_duration
+            description: "Durée du match en secondes"
+            tests:
+              - not_null
+              
+      - name: participants
+        description: "Statistiques des joueurs dans chaque match"
+        columns:
+          - name: match_id
+            description: "Référence au match"
+            tests:
+              - not_null
+              - relationships:
+                  to: source('raw', 'matches')
+                  field: match_id
+          - name: champion_name
+            description: "Nom du champion joué"
+            tests:
+              - not_null
